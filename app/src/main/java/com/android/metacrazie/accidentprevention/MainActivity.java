@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -45,6 +46,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Iterator;
@@ -64,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private String latitude;
     private String longitude;
     protected String SENDER_ID = "470083766349";
-    private GoogleCloudMessaging gcm =null;
+    private GoogleCloudMessaging gcm = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,22 +94,25 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         getRegistrationID();
 
 
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
-             return;
+            return;
         }
+
+        /*
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
 
         if (mLastLocation == null) {
             //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            //mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
             Log.d("Location: ", String.valueOf(mLastLocation));
         } else {
             //TODO: send data
             handleNewLocation(mLastLocation);
             Log.d(TAG, String.valueOf(mLastLocation));
         }
+        */
 
         key_text = (EditText) findViewById(R.id.edittext_key);
         data_text = (EditText) findViewById(R.id.edittext_data);
@@ -124,14 +129,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
     }
 
-        String regId = "";
-        String msg = "";
+    String regId = "";
+    String msg = "";
 
     @SuppressLint("StaticFieldLeak")
     public void getRegistrationID() {
         new AsyncTask() {
             @Override
-            protected Object doInBackground(Object...params) {
+            protected Object doInBackground(Object... params) {
 
                 String msg = "";
                 try {
@@ -154,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
 
-    public void checkPlayServices(){
+    public void checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(getApplicationContext());
         if (resultCode != ConnectionResult.SUCCESS) {
             if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
@@ -193,6 +198,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         return super.onOptionsItemSelected(item);
     }
+
     @Override
     public void onStart() {
         super.onStart();
@@ -240,6 +246,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (location == null) {
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         } else {
+            latitude = String.valueOf(location.getLatitude());
+            longitude = String.valueOf(location.getLongitude());
             Log.d(TAG, String.valueOf(location));
         }
     }
@@ -261,9 +269,35 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         handleNewLocation(location);
     }
 
-    public void getData(){
+    public void getData() {
+
+        final String BASE_URL =
+                "http://192.168.0.9:5000/secondscreening?";
+        final String USER_ID = "userid";
+        final String GPS_PARAM = "gps";
+        URL url_link;
+        String url = "";
+
         RequestQueue queue = Volley.newRequestQueue(this);
-        String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
+        //String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
+        String gps = "[" + latitude + "," + longitude + "]";
+        Log.d("GET DATA", gps);
+
+        try {
+            Uri builtUri = Uri.parse(BASE_URL)
+                    .buildUpon()
+                    .appendQueryParameter(USER_ID, "1234")
+                    .appendQueryParameter(GPS_PARAM, gps)
+                    .build();
+
+            url_link = new URL(builtUri.toString());
+            url = builtUri.toString();
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        Log.d("URL", url);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -279,6 +313,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
         queue.add(stringRequest);
     }
+
+
+
+
+
+
+
 
     public class SendRequest extends AsyncTask<String, Void, String> {
 
