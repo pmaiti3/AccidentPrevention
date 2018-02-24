@@ -2,16 +2,28 @@ package com.android.metacrazie.accidentprevention;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -67,7 +79,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private String longitude;
     protected String SENDER_ID = "470083766349";
     private GoogleCloudMessaging gcm = null;
+    private NotificationHelper notificationHelper;
+    CountDownTimer waitTimer;
 
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         locationHelper.checkpermission();
 
         getRegistrationID();
-
+        notificationHelper = new NotificationHelper(this);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -124,13 +140,31 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Snackbar.make(view, "Send data", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
                 //new SendRequest().execute();
-                getData();
+                //getData();
+                postNotification();
+                startTimer();
             }
         });
     }
 
     String regId = "";
     String msg = "";
+
+    public void startTimer(){
+        waitTimer = new CountDownTimer(10000, 300) {
+
+            public void onTick(long millisUntilFinished) {
+                //called every 300 milliseconds, which could be used to
+                //send messages or some other action
+                Log.d(TAG, String.valueOf(millisUntilFinished));
+            }
+
+            public void onFinish() {
+                Intent intent = new Intent(MainActivity.this, GetLocation.class);
+                startActivity(intent);
+            }
+        }.start();
+    }
 
     @SuppressLint("StaticFieldLeak")
     public void getRegistrationID() {
@@ -246,6 +280,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (location == null) {
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         } else {
+            mLastLocation = location;
             latitude = String.valueOf(location.getLatitude());
             longitude = String.valueOf(location.getLongitude());
             Log.d(TAG, String.valueOf(location));
@@ -269,10 +304,41 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         handleNewLocation(location);
     }
 
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void postNotification() {
+
+        //Intent snoozeIntent = new Intent(this, MyBroadcastReceiver.class);
+        //snoozeIntent.setAction(ACTION_SNOOZE);
+        //snoozeIntent.putExtra(EXTRA_NOTIFICATION_ID, 0);
+        //PendingIntent snoozePendingIntent =
+        //PendingIntent.getBroadcast(this, 0, snoozeIntent, 0);
+
+        Intent intentAction = new Intent(getApplicationContext(),ActionReceiver.class);
+
+        //This is optional if you have more than one buttons and want to differentiate between two
+        intentAction.putExtra("action","actionName");
+
+        PendingIntent pIntentlogin = PendingIntent.getBroadcast(getApplicationContext(),1,intentAction,PendingIntent.FLAG_UPDATE_CURRENT);
+
+        notificationHelper = new NotificationHelper(this);
+        Notification.Builder notificationBuilder = null;
+        notificationBuilder = notificationHelper.getNotification1(getString(R.string.dialog_title),
+                getString(R.string.dialog_message))
+                .addAction(R.drawable.ic_cancel_black_24dp, "Turn OFF alert", pIntentlogin);
+        notificationBuilder.getNotification().flags |= Notification.FLAG_AUTO_CANCEL;
+
+        if (notificationBuilder != null) {
+            notificationHelper.notify(0, notificationBuilder);
+        }
+    }
+
+
     public void getData() {
 
         final String BASE_URL =
-                "http://192.168.0.9:5000/secondscreening?";
+                "http://192.168.0.5:5000/secondscreening?";
         final String USER_ID = "userid";
         final String GPS_PARAM = "gps";
         URL url_link;

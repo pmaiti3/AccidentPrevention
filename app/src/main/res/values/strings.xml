@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">AccidentPrevention</string>
     <string name="action_settings">Settings</string>
+    <string name="notification">Test</string>
+    <string name="dialog_message">Is it a false alarm?</string>
+    <string name="dialog_title">Alert</string>
+    <string name="cancel">False Alarm</string>
 </resources>

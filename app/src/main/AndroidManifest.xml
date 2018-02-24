@@ -28,6 +28,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".GetLocation"/>
+        <activity android:name=".SendData"/>
         <receiver
             android:name="com.google.android.gms.gcm.GcmReceiver" android:exported="true"
             android:permission="com.google.android.c2dm.permission.SEND" >
@@ -50,7 +52,7 @@
             <action android:name="com.google.android.gms.iid.InstanceID"/>
         </intent-filter>
     </service>
-        
+        <receiver android:name=".ActionReceiver"></receiver>
     </application>
 
 </manifest>
