@@ -43,9 +43,22 @@ public class IntentService extends GcmListenerService {
             message = data.getString("message");
             Log.d(TAG, "From: " + from);
             Log.d(TAG, "Message: " + message);
+
+            /*
+
+            Intent intent = new Intent (this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+
+             */
+
+
             postNotification();
             startService();
         }
+
+
+
     private void startService()
     {
         timer.scheduleAtFixedRate(new mainTask(), 0, 5000);
@@ -73,22 +86,6 @@ public class IntentService extends GcmListenerService {
         Toast.makeText(this, "Service Stopped ...", Toast.LENGTH_SHORT).show();
     }
 
-
-    public void startTimer(){
-        waitTimer = new CountDownTimer(10000, 300) {
-
-            public void onTick(long millisUntilFinished) {
-                //called every 300 milliseconds, which could be used to
-                //send messages or some other action
-                Log.d(TAG, String.valueOf(millisUntilFinished));
-            }
-
-            public void onFinish() {
-                Intent intent = new Intent(IntentService.this, GetLocation.class);
-                startActivity(intent);
-            }
-        }.start();
-    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void postNotification() {

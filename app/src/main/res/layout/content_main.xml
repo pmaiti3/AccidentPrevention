@@ -8,19 +8,35 @@
     tools:context="com.android.metacrazie.accidentprevention.MainActivity"
     tools:showIn="@layout/activity_main">
     <LinearLayout
+        android:background="@android:color/black"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        <EditText
-            android:id="@+id/edittext_key"
-            android:hint="KEY"
+
+        <TextView
+            android:id="@+id/time_text"
+            android:gravity="center"
+            android:clickable="true"
+            android:text="TIMER"
+            android:textSize="50dp"
+            android:textColor="@android:color/white"
+            android:layout_weight="1"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <EditText
-            android:id="@+id/edittext_data"
-            android:hint="DATA"
+            android:layout_height="0dp" />
+
+        <TextView
+            android:background="@color/colorPrimaryDark"
             android:layout_width="match_parent"
+            android:layout_height="2dp" />
+
+        <Button
+            style="@style/Base.Widget.AppCompat.Button.Borderless.Colored"
+            android:text="TURN OFF ALARM"
+            android:id="@+id/btn_accident"
+            android:layout_width="match_parent"
+            android:layout_weight="3"
             android:layout_height="wrap_content" />
+
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

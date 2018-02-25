@@ -11,6 +11,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.location.Location;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -30,6 +32,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -68,8 +71,6 @@ import javax.net.ssl.HttpsURLConnection;
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, ActivityCompat.OnRequestPermissionsResultCallback, com.google.android.gms.location.LocationListener {
 
-    private static EditText key_text;
-    private static EditText data_text;
     private Location mLastLocation;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
@@ -81,7 +82,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private GoogleCloudMessaging gcm = null;
     private NotificationHelper notificationHelper;
     CountDownTimer waitTimer;
-
+    Button btn;
+    TextView timer_txt;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
@@ -130,8 +132,28 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
         */
 
-        key_text = (EditText) findViewById(R.id.edittext_key);
-        data_text = (EditText) findViewById(R.id.edittext_data);
+
+        startTimer();
+
+
+
+        timer_txt = (TextView) findViewById(R.id.time_text);
+        timer_txt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendError();
+            }
+        });
+
+        btn = (Button) findViewById(R.id.btn_accident);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendError();
+                waitTimer.cancel();
+                timer_txt.setText("FALSE ALARM!");
+            }
+        });
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -150,21 +172,74 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     String regId = "";
     String msg = "";
 
-    public void startTimer(){
+    public void startTimer() {
         waitTimer = new CountDownTimer(10000, 300) {
+            ToneGenerator toneGen1 = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
 
             public void onTick(long millisUntilFinished) {
                 //called every 300 milliseconds, which could be used to
                 //send messages or some other action
                 Log.d(TAG, String.valueOf(millisUntilFinished));
+                long seconds = millisUntilFinished/1000;
+                String display = String.valueOf(seconds) + " s";
+                timer_txt.setText(display);
+                toneGen1.startTone(ToneGenerator.TONE_CDMA_PIP,150);
             }
 
             public void onFinish() {
-                Intent intent = new Intent(MainActivity.this, GetLocation.class);
-                startActivity(intent);
+                getData();
             }
         }.start();
     }
+
+    public void sendError(){
+
+        //TODO: what do I send?
+
+        final String BASE_URL =
+                "http://192.168.0.5:5000/secondscreening?";
+        final String USER_ID = "userid";
+        final String PARAM = "error";
+        URL url_link;
+        String url = "";
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        //String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
+        String gps = "[" + latitude + "," + longitude + "]";
+        Log.d("GET DATA", gps);
+
+        try {
+            Uri builtUri = Uri.parse(BASE_URL)
+                    .buildUpon()
+                    .appendQueryParameter(USER_ID, "1234")
+                    .appendQueryParameter(PARAM, gps)
+                    .build();
+
+            url_link = new URL(builtUri.toString());
+            url = builtUri.toString();
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        Log.d("URL", url);
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        Log.d(TAG, response);
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d(TAG, String.valueOf(error));
+            }
+        });
+        queue.add(stringRequest);
+
+    }
+
 
     @SuppressLint("StaticFieldLeak")
     public void getRegistrationID() {
@@ -192,6 +267,77 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }.execute(null, null, null);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void postNotification() {
+
+        //Intent snoozeIntent = new Intent(this, MyBroadcastReceiver.class);
+        //snoozeIntent.setAction(ACTION_SNOOZE);
+        //snoozeIntent.putExtra(EXTRA_NOTIFICATION_ID, 0);
+        //PendingIntent snoozePendingIntent =
+        //PendingIntent.getBroadcast(this, 0, snoozeIntent, 0);
+
+        Intent intentAction = new Intent(getApplicationContext(), ActionReceiver.class);
+
+        //This is optional if you have more than one buttons and want to differentiate between two
+        intentAction.putExtra("action", "actionName");
+
+        PendingIntent pIntentlogin = PendingIntent.getBroadcast(getApplicationContext(), 1, intentAction, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        notificationHelper = new NotificationHelper(this);
+        Notification.Builder notificationBuilder = null;
+        notificationBuilder = notificationHelper.getNotification1(getString(R.string.dialog_title),
+                getString(R.string.dialog_message))
+                .addAction(R.drawable.ic_cancel_black_24dp, "Turn OFF alert", pIntentlogin);
+        notificationBuilder.getNotification().flags |= Notification.FLAG_AUTO_CANCEL;
+
+        notificationHelper.notify(0, notificationBuilder);
+    }
+
+
+    public void getData() {
+
+        final String BASE_URL =
+                "http://192.168.0.5:5000/secondscreening?";
+        final String USER_ID = "userid";
+        final String GPS_PARAM = "gps";
+        URL url_link;
+        String url = "";
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        //String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
+        String gps = "[" + latitude + "," + longitude + "]";
+        Log.d("GET DATA", gps);
+
+        try {
+            Uri builtUri = Uri.parse(BASE_URL)
+                    .buildUpon()
+                    .appendQueryParameter(USER_ID, "1234")
+                    .appendQueryParameter(GPS_PARAM, gps)
+                    .build();
+
+            url_link = new URL(builtUri.toString());
+            url = builtUri.toString();
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        Log.d("URL", url);
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        Log.d(TAG, response);
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d(TAG, String.valueOf(error));
+            }
+        });
+        queue.add(stringRequest);
+    }
 
     public void checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(getApplicationContext());
@@ -303,199 +449,5 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Log.d(TAG, String.valueOf(location));
         handleNewLocation(location);
     }
-
-
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public void postNotification() {
-
-        //Intent snoozeIntent = new Intent(this, MyBroadcastReceiver.class);
-        //snoozeIntent.setAction(ACTION_SNOOZE);
-        //snoozeIntent.putExtra(EXTRA_NOTIFICATION_ID, 0);
-        //PendingIntent snoozePendingIntent =
-        //PendingIntent.getBroadcast(this, 0, snoozeIntent, 0);
-
-        Intent intentAction = new Intent(getApplicationContext(),ActionReceiver.class);
-
-        //This is optional if you have more than one buttons and want to differentiate between two
-        intentAction.putExtra("action","actionName");
-
-        PendingIntent pIntentlogin = PendingIntent.getBroadcast(getApplicationContext(),1,intentAction,PendingIntent.FLAG_UPDATE_CURRENT);
-
-        notificationHelper = new NotificationHelper(this);
-        Notification.Builder notificationBuilder = null;
-        notificationBuilder = notificationHelper.getNotification1(getString(R.string.dialog_title),
-                getString(R.string.dialog_message))
-                .addAction(R.drawable.ic_cancel_black_24dp, "Turn OFF alert", pIntentlogin);
-        notificationBuilder.getNotification().flags |= Notification.FLAG_AUTO_CANCEL;
-
-        if (notificationBuilder != null) {
-            notificationHelper.notify(0, notificationBuilder);
-        }
-    }
-
-
-    public void getData() {
-
-        final String BASE_URL =
-                "http://192.168.0.5:5000/secondscreening?";
-        final String USER_ID = "userid";
-        final String GPS_PARAM = "gps";
-        URL url_link;
-        String url = "";
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-        //String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
-        String gps = "[" + latitude + "," + longitude + "]";
-        Log.d("GET DATA", gps);
-
-        try {
-            Uri builtUri = Uri.parse(BASE_URL)
-                    .buildUpon()
-                    .appendQueryParameter(USER_ID, "1234")
-                    .appendQueryParameter(GPS_PARAM, gps)
-                    .build();
-
-            url_link = new URL(builtUri.toString());
-            url = builtUri.toString();
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-
-        Log.d("URL", url);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
-                        Log.d(TAG, response);
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d(TAG, String.valueOf(error));
-            }
-        });
-        queue.add(stringRequest);
-    }
-
-
-
-
-
-
-
-
-    public class SendRequest extends AsyncTask<String, Void, String> {
-
-        //TODO: get data
-        protected void onPreExecute() {
-        }
-
-        protected String doInBackground(String... arg0) {
-
-            Log.d("Background thread", "Send Req");
-            try {
-
-                URL url = new URL("http://192.168.0.9:5000/secondscreening?userid=1234&gps=22.496299,88.371931");
-                Log.d(TAG, String.valueOf(url));
-
-                JSONObject postDataParams = new JSONObject();
-
-                //TODO: get GPS data
-
-                String key = String.valueOf(key_text.getText());
-                String value = String.valueOf(data_text.getText());
-
-                //postDataParams.put("gps", "22.496299,88.371931");
-                //postDataParams.put("userid", "1234");
-
-                Log.e("params", postDataParams.toString());
-
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setReadTimeout(15000 /* milliseconds */);
-                conn.setConnectTimeout(15000 /* milliseconds */);
-                conn.setRequestMethod("GET");
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-
-                Log.d("OutputStream", "tag1");
-
-                OutputStream os = conn.getOutputStream();
-                BufferedWriter writer = new BufferedWriter(
-                        new OutputStreamWriter(os, "UTF-8"));
-                writer.write(getPostDataString(postDataParams));
-
-                writer.flush();
-                writer.close();
-                os.close();
-
-                Log.d("OutputStream", "tag2");
-
-                int responseCode = conn.getResponseCode();
-
-                if (responseCode == HttpsURLConnection.HTTP_OK) {
-
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuffer sb = new StringBuffer("");
-                    String line = "";
-
-                    Log.d("ResponseCodetag", "HTTP_OK");
-
-
-                    while ((line = in.readLine()) != null) {
-
-                        sb.append(line);
-                        break;
-                    }
-
-                    in.close();
-                    return sb.toString();
-
-                } else {
-                    Log.d("Error", "false: " + responseCode);
-                    return new String("false : " + responseCode);
-
-                }
-            } catch (Exception e) {
-                Log.d("Exception", "Exception: " + e.getMessage());
-                return new String("Exception: " + e.getMessage());
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            Toast.makeText(getApplicationContext(), result,
-                    Toast.LENGTH_LONG).show();
-
-        }
-    }
-
-    public static String getPostDataString(JSONObject params) throws Exception {
-
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
-
-        Iterator<String> itr = params.keys();
-
-        while (itr.hasNext()) {
-
-            String key = itr.next();
-            Object value = params.get(key);
-
-            if (first)
-                first = false;
-            else
-                result.append("&");
-
-            result.append(URLEncoder.encode(key, "UTF-8"));
-            result.append("=");
-            result.append(URLEncoder.encode(value.toString(), "UTF-8"));
-
-        }
-        return result.toString();
-    }
-
 
 }
