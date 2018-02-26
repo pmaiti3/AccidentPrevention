@@ -141,7 +141,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         timer_txt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sendError();
+                waitTimer.cancel();
+                timer_txt.setText("FALSE ALARM!");
             }
         });
 
@@ -149,7 +150,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sendError();
+
                 waitTimer.cancel();
                 timer_txt.setText("FALSE ALARM!");
             }
@@ -190,54 +191,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 getData();
             }
         }.start();
-    }
-
-    public void sendError(){
-
-        //TODO: what do I send?
-
-        final String BASE_URL =
-                "http://192.168.0.5:5000/secondscreening?";
-        final String USER_ID = "userid";
-        final String PARAM = "error";
-        URL url_link;
-        String url = "";
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-        //String url ="http://192.168.0.9:5000/secondscreening?userid=1234&gps=[22.496299,88.371931]";
-        String gps = "[" + latitude + "," + longitude + "]";
-        Log.d("GET DATA", gps);
-
-        try {
-            Uri builtUri = Uri.parse(BASE_URL)
-                    .buildUpon()
-                    .appendQueryParameter(USER_ID, "1234")
-                    .appendQueryParameter(PARAM, gps)
-                    .build();
-
-            url_link = new URL(builtUri.toString());
-            url = builtUri.toString();
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-
-        Log.d("URL", url);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
-                        Log.d(TAG, response);
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d(TAG, String.valueOf(error));
-            }
-        });
-        queue.add(stringRequest);
-
     }
 
 
@@ -297,7 +250,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void getData() {
 
         final String BASE_URL =
-                "http://192.168.0.5:5000/secondscreening?";
+                "http://192.168.0.35:9000/secondscreening?";
         final String USER_ID = "userid";
         final String GPS_PARAM = "gps";
         URL url_link;

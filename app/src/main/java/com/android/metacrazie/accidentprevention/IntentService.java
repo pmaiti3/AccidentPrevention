@@ -44,17 +44,17 @@ public class IntentService extends GcmListenerService {
             Log.d(TAG, "From: " + from);
             Log.d(TAG, "Message: " + message);
 
-            /*
+
 
             Intent intent = new Intent (this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
 
-             */
 
 
-            postNotification();
-            startService();
+
+            //postNotification();
+            //startService();
         }
 
 
